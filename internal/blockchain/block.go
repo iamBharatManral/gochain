@@ -1,16 +1,17 @@
 package blockchain
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
-type Transaction struct {
-	Sender   string
-	Receiver string
-	Amount   float64
+var gb Block
+var once sync.Once
+
+type Serializer interface {
+	Serialize() string
 }
 
 type Header struct {
@@ -20,53 +21,63 @@ type Header struct {
 	Hash         string
 }
 
+type Data struct {
+	Transactions []Transaction
+}
+
 type Block struct {
 	Header
-	Data []Transaction
+	Data
 }
 
-func createGenesisBlock() Block {
-	initialTranscation := Transaction{
-		Sender:   "Creator",
-		Receiver: "System",
-		Amount:   100000,
-	}
-	data := []Transaction{initialTranscation}
-	header := Header{
-		Index:        0,
-		Timestamp:    time.Duration(time.Now().UnixMilli()),
-		PreviousHash: "",
-	}
-	header.Hash = generateHash(header, data)
-
-	return Block{
-		Header: header,
-		Data:   data,
-	}
+func (b Block) Validate() bool {
+	currentHash := b.Hash
+	calculatedHash := GenerateHash(b)
+	return currentHash == calculatedHash
 }
 
-func serializeTransaction(t Transaction) string {
-	serializedData := []byte(fmt.Sprintf("%s%s%s", t.Sender, t.Receiver, t.Amount))
-	return fmt.Sprintf("%s", serializedData)
-}
-
-func serializeHeader(h Header) string {
+func (h Header) Serialize() string {
 	serializedHeader := []byte(fmt.Sprintf("%s%s%s", h.Index, h.Timestamp, h.PreviousHash))
 	return fmt.Sprintf("%s", serializedHeader)
 }
 
-func serializeData(d []Transaction) string {
+func (d Data) Serialize() string {
 	var data string
-	for _, t := range d {
-		data += serializeTransaction(t)
+	for _, t := range d.Transactions {
+		data += t.Serialize()
 	}
 	return data
 }
 
-func generateHash(h Header, d []Transaction) string {
-	header, trans := serializeHeader(h), serializeData(d)
-	serializedData := fmt.Sprintf("%s%s", header, trans)
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(serializedData)))
+func (b Block) Serialize() string {
+	return fmt.Sprintf("%s%s", b.Header.Serialize(), b.Data.Serialize())
+}
+
+func createGenesisBlock() Block {
+	once.Do(func() {
+		initialTranscation := Transaction{
+			Sender:   "Creator",
+			Receiver: "System",
+			Amount:   100000,
+		}
+		data := []Transaction{initialTranscation}
+		header := Header{
+			Index:        0,
+			Timestamp:    time.Duration(time.Now().UnixMilli()),
+			PreviousHash: "",
+		}
+		block := Block{
+			Header: header,
+			Data: Data{
+				Transactions: data,
+			},
+		}
+
+		block.Hash = GenerateHash(block)
+		gb = block
+
+	})
+	return gb
 }
 
 func createNewBlock(index uint, prevHash string, trans []Transaction) Block {
@@ -75,11 +86,15 @@ func createNewBlock(index uint, prevHash string, trans []Transaction) Block {
 		PreviousHash: prevHash,
 		Timestamp:    time.Duration(time.Now().UnixMilli()),
 	}
-	header.Hash = generateHash(header, trans)
-	return Block{
-		Data:   trans,
+	block := Block{
 		Header: header,
+		Data: Data{
+			Transactions: trans,
+		},
 	}
+	header.Hash = GenerateHash(block)
+	block.Header = header
+	return block
 }
 
 func (b Block) String() string {
@@ -90,7 +105,7 @@ func (b Block) String() string {
 	sb.WriteString(fmt.Sprintf("  Hash: %s\n", b.Hash))
 	sb.WriteString("  Transactions:\n")
 
-	for _, tx := range b.Data {
+	for _, tx := range b.Data.Transactions {
 		sb.WriteString(fmt.Sprintf("    %s -> %s: %.2f\n", tx.Sender, tx.Receiver, tx.Amount))
 	}
 

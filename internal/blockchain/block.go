@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -9,10 +10,6 @@ import (
 
 var gb Block
 var once sync.Once
-
-type Serializer interface {
-	Serialize() string
-}
 
 type Header struct {
 	Index        uint
@@ -95,6 +92,20 @@ func createNewBlock(index uint, prevHash string, trans []Transaction) Block {
 	header.Hash = GenerateHash(block)
 	block.Header = header
 	return block
+}
+
+func validateBlock(bc *Blockchain, b Block, currentBlockLength uint) error {
+	if b.Index != currentBlockLength+1 {
+		return errors.New(fmt.Sprintf("new block index is not correct, expected: %d, got: %d", currentBlockLength+1, b.Index))
+	}
+
+	currentBlockHash := bc.blocks[currentBlockLength].Hash
+
+	if b.PreviousHash != currentBlockHash {
+		return errors.New(fmt.Sprintf("previous block hash does not match in new block, expected: %x, got: %x", currentBlockHash, b.PreviousHash))
+	}
+
+	return nil
 }
 
 func (b Block) String() string {

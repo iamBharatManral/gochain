@@ -3,20 +3,20 @@ package blockchain
 import "strings"
 
 type Blockchain struct {
-	blocks []block
+	blocks []Block
 }
 
 func New() *Blockchain {
 	return &Blockchain{
-		blocks: []block{
+		blocks: []Block{
 			createGenesisBlock(),
 		},
 	}
 }
 
-func (bc *Blockchain) AddBlock(trans []transaction) error {
+func (bc *Blockchain) AddBlock(trans []Transaction) error {
 	blockLen := len(bc.blocks) - 1
-	prevHash := bc.blocks[blockLen].previousHash
+	prevHash := bc.blocks[blockLen].Hash
 	block := createNewBlock(uint(blockLen)+1, prevHash, trans)
 	bc.blocks = append(bc.blocks, block)
 	return nil

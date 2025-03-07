@@ -1,4 +1,4 @@
-package blockchain
+package transaction
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ func (t Transaction) Serialize() string {
 	return fmt.Sprintf("%s", serializedData)
 }
 
-func validateTransactions(ts []Transaction) error {
+func ValidateTransactions(ts []Transaction) error {
 	for _, t := range ts {
 		if err := validateTransaction(t); err != nil {
 			return err

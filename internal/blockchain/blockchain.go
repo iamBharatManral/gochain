@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/iamBharatManral/gochain/internal/transaction"
 )
 
 type Blockchain struct {
@@ -19,8 +21,8 @@ func New() *Blockchain {
 	}
 }
 
-func (bc *Blockchain) AddBlock(trans []Transaction) error {
-	if err := validateTransactions(trans); err != nil {
+func (bc *Blockchain) AddBlock(trans []transaction.Transaction) error {
+	if err := transaction.ValidateTransactions(trans); err != nil {
 		return err
 	}
 

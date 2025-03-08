@@ -1,4 +1,4 @@
-package blockchain
+package block
 
 import (
 	"crypto/sha256"
@@ -24,22 +24,22 @@ const baseDifficulty = 5
 const genesisMessage = "gochain"
 
 type Header struct {
-	Index        uint
-	Timestamp    time.Duration
-	PreviousHash string
-	Hash         string
-	MerkelRoot   string
-	Nounce       uint
-	Difficulty   uint32
+	Index        uint          `json:"index"`
+	Timestamp    time.Duration `json:"timestamp"`
+	PreviousHash string        `json:"previousHash"`
+	Hash         string        `json:"hash"`
+	MerkelRoot   string        `json:"merkleRoot"`
+	Nounce       uint          `json:"nounce"`
+	Difficulty   uint32        `json:"difficulty"`
 }
 
 type Data struct {
-	Transactions []transaction.Transaction
+	Transactions []transaction.Transaction `json:"transactions"`
 }
 
 type Block struct {
-	Header
-	Data
+	Header `json:"header"`
+	Data   `json:"data"`
 }
 
 func (b Block) Validate() bool {
@@ -65,7 +65,10 @@ func (b Block) Serialize() string {
 	return fmt.Sprintf("%s%s", b.Header.Serialize(), b.Data.Serialize())
 }
 
-func createGenesisBlock() Block {
+func GenerateHash(b Block) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(b.Serialize())))
+}
+func CreateGenesisBlock() Block {
 	once.Do(func() {
 		initialTranscation := transaction.Transaction{
 			Sender:   "Creator",
@@ -95,7 +98,7 @@ func createGenesisBlock() Block {
 	return gb
 }
 
-func createNewBlock(index uint, prevHash string, trans []transaction.Transaction) Block {
+func CreateNewBlock(index uint, prevHash string, trans []transaction.Transaction) Block {
 	header := Header{
 		Index:        index,
 		PreviousHash: prevHash,
@@ -145,15 +148,13 @@ func calculateTarget() *big.Int {
 	return target
 }
 
-func validateBlock(bc *Blockchain, b Block, currentBlockLength uint) error {
-	if b.Index != currentBlockLength+1 {
-		return errors.New(fmt.Sprintf("new block index is not correct, expected: %d, got: %d", currentBlockLength+1, b.Index))
+func ValidateBlock(currentBlock, prevBlock Block, currentBlockLength uint) error {
+	if currentBlock.Index != prevBlock.Index+1 {
+		return errors.New(fmt.Sprintf("new block index is not correct, expected: %d, got: %d", prevBlock.Index+1, currentBlock.Index))
 	}
 
-	currentBlockHash := bc.blocks[currentBlockLength].Hash
-
-	if b.PreviousHash != currentBlockHash {
-		return errors.New(fmt.Sprintf("previous block hash does not match in new block, expected: %x, got: %x", currentBlockHash, b.PreviousHash))
+	if currentBlock.PreviousHash != prevBlock.Hash {
+		return errors.New(fmt.Sprintf("previous block hash does not match in new block, expected: %x, got: %x", prevBlock.Hash, currentBlock.PreviousHash))
 	}
 
 	return nil

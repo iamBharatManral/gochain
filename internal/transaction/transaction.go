@@ -7,9 +7,9 @@ import (
 )
 
 type Transaction struct {
-	Sender   string
-	Receiver string
-	Amount   float64
+	Sender   string  `json:"sender"`
+	Receiver string  `json:"receiver"`
+	Amount   float64 `json:"amount"`
 }
 
 func (t Transaction) Serialize() string {

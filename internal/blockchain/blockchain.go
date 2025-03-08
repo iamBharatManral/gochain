@@ -6,18 +6,22 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/iamBharatManral/gochain/internal/block"
+	"github.com/iamBharatManral/gochain/internal/persistence"
 	"github.com/iamBharatManral/gochain/internal/transaction"
 )
 
 type Blockchain struct {
-	blocks []Block
+	Blocks  []block.Block
+	Storage *persistence.Storage
 }
 
-func New() *Blockchain {
+func New(storage persistence.Storage) *Blockchain {
 	return &Blockchain{
-		blocks: []Block{
-			createGenesisBlock(),
+		Blocks: []block.Block{
+			block.CreateGenesisBlock(),
 		},
+		Storage: &storage,
 	}
 }
 
@@ -26,22 +30,22 @@ func (bc *Blockchain) AddBlock(trans []transaction.Transaction) error {
 		return err
 	}
 
-	blockLen := len(bc.blocks) - 1
-	prevHash := bc.blocks[blockLen].Hash
+	blockLen := len(bc.Blocks)
+	prevHash := bc.Blocks[blockLen-1].Hash
 
-	newBlock := createNewBlock(uint(blockLen)+1, prevHash, trans)
+	newBlock := block.CreateNewBlock(uint(blockLen), prevHash, trans)
 
-	if err := validateBlock(bc, newBlock, uint(blockLen)); err != nil {
+	if err := block.ValidateBlock(newBlock, bc.Blocks[blockLen-1], uint(blockLen)); err != nil {
 		return err
 	}
 
-	bc.blocks = append(bc.blocks, newBlock)
+	bc.Blocks = append(bc.Blocks, newBlock)
 	return nil
 }
 
 func (bc *Blockchain) Validate() error {
 	var err strings.Builder
-	for idx, b := range bc.blocks {
+	for idx, b := range bc.Blocks {
 		if !b.Validate() {
 			err.WriteString("block hash does not match with its own previously calculate hash\n")
 		}
@@ -53,11 +57,11 @@ func (bc *Blockchain) Validate() error {
 			continue
 		}
 
-		if prevBlockIndex, curBlockIndex := bc.blocks[idx-1].Index, b.Index; !doesBlockIndexCorrectlyIncrement(prevBlockIndex, curBlockIndex) {
+		if prevBlockIndex, curBlockIndex := bc.Blocks[idx-1].Index, b.Index; !doesBlockIndexCorrectlyIncrement(prevBlockIndex, curBlockIndex) {
 			err.WriteString(fmt.Sprintf("block index is not correct, expected: %d, got: %d\n", prevBlockIndex, curBlockIndex))
 		}
 
-		if prevBlockHash, prevHashInCurrentBlock := bc.blocks[idx-1].Hash, b.PreviousHash; !doesHashMatches(prevBlockHash, prevHashInCurrentBlock) {
+		if prevBlockHash, prevHashInCurrentBlock := bc.Blocks[idx-1].Hash, b.PreviousHash; !doesHashMatches(prevBlockHash, prevHashInCurrentBlock) {
 			err.WriteString(fmt.Sprintf("previous hash does not match, expected: %x, got: %x\n", prevBlockHash, prevHashInCurrentBlock))
 		}
 	}
@@ -76,8 +80,8 @@ func doesHashMatches(hashOfPrevBlock, hashInCurBlock string) bool {
 }
 
 func (bc *Blockchain) validateGenesisBlock() error {
-	curGenBlock := bc.blocks[0]
-	if ok := reflect.DeepEqual(curGenBlock, createGenesisBlock()); !ok {
+	curGenBlock := bc.Blocks[0]
+	if ok := reflect.DeepEqual(curGenBlock, block.CreateGenesisBlock()); !ok {
 		return errors.New("")
 	}
 	return nil
@@ -86,7 +90,7 @@ func (bc *Blockchain) validateGenesisBlock() error {
 func (bc *Blockchain) String() string {
 	var sb strings.Builder
 	sb.WriteString("Blockchain:\n")
-	for _, b := range bc.blocks {
+	for _, b := range bc.Blocks {
 		sb.WriteString(b.String() + "\n")
 	}
 	return sb.String()

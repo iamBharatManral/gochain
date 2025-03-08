@@ -5,11 +5,16 @@ import (
 	"log"
 
 	"github.com/iamBharatManral/gochain/internal/blockchain"
+	"github.com/iamBharatManral/gochain/internal/persistence"
 	"github.com/iamBharatManral/gochain/internal/transaction"
 )
 
 func main() {
-	bc := blockchain.New()
+	storage, err := persistence.NewBadgerStorage("./data")
+	if err != nil {
+		log.Fatal("stoage is not initialized")
+	}
+	bc := blockchain.New(storage)
 	trans := []transaction.Transaction{
 		{
 			Sender:   "Bharat",
@@ -18,7 +23,7 @@ func main() {
 		},
 	}
 
-	err := bc.AddBlock(trans)
+	err = bc.AddBlock(trans)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -27,5 +32,6 @@ func main() {
 	if err = bc.Validate(); err != nil {
 		log.Fatal(err.Error())
 	}
+	defer storage.Close()
 
 }

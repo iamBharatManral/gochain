@@ -68,6 +68,7 @@ func (b Block) Serialize() string {
 func GenerateHash(b Block) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(b.Serialize())))
 }
+
 func CreateGenesisBlock() Block {
 	once.Do(func() {
 		initialTranscation := transaction.Transaction{
